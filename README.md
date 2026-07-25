@@ -1,4 +1,4 @@
-# CryptoPay URI Protocol
+# Crypto Payment URI Protocol
 
 > A lightweight, chain-agnostic URI scheme for crypto payments — designed for QR-code POS terminals, deep links, and wallet interoperability.
 
