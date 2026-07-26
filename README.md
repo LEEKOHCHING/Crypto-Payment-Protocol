@@ -1,4 +1,4 @@
-# Crypto Payment Protocol (URI)
+# Crypto Payment Protocol (CPP URI)
 
 > A lightweight, chain-agnostic URI scheme for crypto payments — designed for QR-code POS terminals, deep links, and wallet interoperability.
 
@@ -10,9 +10,9 @@
 
 ## Abstract
 
-This document proposes the **CryptoPay URI Protocol** — a simple, consistent URI scheme for initiating cryptocurrency payments across multiple blockchains. The format encodes the destination chain, recipient address, token contract, and payment amount in a single string that can be embedded in a QR code, NFC tag, or clickable deep link.
+This document proposes the **Crypto Payment Protocol (CPP)** — a simple, consistent URI scheme for initiating cryptocurrency payments across multiple blockchains. The format encodes the destination chain, recipient address, token contract, and payment amount in a single string that can be embedded in a QR code, NFC tag, or clickable deep link.
 
-When a wallet scans or receives a CryptoPay URI, it should automatically select the correct network, identify the token, pre-fill all payment fields, and present the user with a single confirmation step — eliminating manual data entry and reducing payment errors.
+When a wallet scans or receives a CPP URI, it should automatically select the correct network, identify the token, pre-fill all payment fields, and present the user with a single confirmation step — eliminating manual data entry and reducing payment errors.
 
 ---
 
@@ -29,9 +29,9 @@ Four steps that introduce friction and human error.
 
 Bitcoin solved this for BTC with **BIP-21** in 2012. Ethereum introduced **EIP-681**, but its ABI-encoded format is difficult to generate and parse, especially across different token standards and chains. Neither handles multi-chain ERC-20 payments in a developer-friendly way.
 
-The CryptoPay URI scheme fills this gap: a format that is **easy to generate**, **easy to parse**, **human-readable**, and **consistent across BSC, Ethereum, Polygon, Solana, and any future chain**.
+The CPP URI scheme fills this gap: a format that is **easy to generate**, **easy to parse**, **human-readable**, and **consistent across BSC, Ethereum, Polygon, Solana, and any future chain**.
 
-> **Goal:** A user scanning a CryptoPay QR should see a pre-filled confirmation screen in their wallet with zero manual input required. One tap to pay.
+> **Goal:** A user scanning a CPP QR should see a pre-filled confirmation screen in their wallet with zero manual input required. One tap to pay.
 
 ---
 
@@ -40,26 +40,35 @@ The CryptoPay URI scheme fills this gap: a format that is **easy to generate**, 
 ### URI Format
 
 ```
-chain:recipient_address?token=contract_address&amount=decimal_amount[&label=text][&desc=text]
+cpp://chain/recipient_address?token=contract_address&amount=decimal_amount[&label=text][&desc=text]
 ```
+
+The URI components are:
+
+- `cpp` — the fixed protocol scheme
+- `chain` — the destination blockchain identifier
+- `recipient_address` — the merchant or payee address
+- Query parameters — token, amount, label, description, and optional metadata
+
+A wallet should only treat a payload as a CPP payment request when the URI scheme is exactly `cpp`.
 
 ### Anatomy
 
 ```
-bsc:0xded849dedb95bb59dee408650cc8f4e18bd458f4?token=0x319558c8aD708dc42f45ab70eADA4750d6c942d7&amount=49.95&label=TabbyPOS
-│    │                                          │      │                                          │        │
-│    └─ Recipient address (required)            │      └─ ERC-20 contract address (required)     │        └─ Merchant name (optional)
-│                                               └─ Parameter: token                              └─ Parameter: amount (human-readable)
-└─ Chain identifier (required)
+cpp://bsc/0xded849dedb95bb59dee408650cc8f4e18bd458f4?token=0x319558c8aD708dc42f45ab70eADA4750d6c942d7&amount=49.95&label=TabbyPOS
+│     │   │                                          │      │                                          │        │
+│     │   └─ Recipient address (required)            │      └─ Token contract address (required*)     │        └─ Merchant name (optional)
+│     └─ Chain identifier (required)                 └─ Parameter: token                              └─ Parameter: amount (human-readable)
+└─ CPP URI scheme (required)
 ```
 
 ### ABNF Grammar
 
 ```abnf
-cryptopay-uri   = chain ":" address "?" required-params *( "&" optional-param )
+cpp-uri         = "cpp://" chain "/" address "?" required-params *( "&" optional-param )
 
 chain           = 1*( ALPHA / DIGIT / "-" )   ; e.g. "bsc", "eth", "polygon"
-address         = 1*pchar                      ; chain-native address format
+address         = 1*pchar                      ; chain-native recipient address
 
 required-params = token-param "&" amount-param
                 / amount-param                 ; native coin: omit token
@@ -82,8 +91,9 @@ decimals-param  = "decimals=" 1*DIGIT          ; fallback hint if on-chain query
 
 | Parameter | Required | Type | Description |
 |-----------|----------|------|-------------|
-| `chain` (prefix) | ✅ Yes | string | Chain identifier before `:`. See Chain Registry below. |
-| `address` (path) | ✅ Yes | string | Recipient wallet address in the native format of the chain. |
+| `scheme` | ✅ Yes | string | Fixed identifier: `cpp://`. It tells wallets that the payload is a CPP payment request. |
+| `chain` (host) | ✅ Yes | string | Chain identifier immediately after `cpp://`. See Chain Registry below. |
+| `address` (path) | ✅ Yes | string | Recipient wallet address after the chain identifier, in the native format of that chain. |
 | `token` | ✅ Yes* | address | ERC-20 / SPL token contract address. *Omit for native coin transfers (ETH, BNB, SOL).* |
 | `amount` | ✅ Yes | decimal | Payment amount in human-readable units. Must be a positive decimal. e.g. `49.95` |
 | `label` | ❌ No | string | Merchant or payee display name shown in wallet UI. URL-encoded. |
@@ -120,33 +130,33 @@ The following chain identifiers are defined in v1.0:
 
 ### ERC-20 token payment (BSC)
 ```
-bsc:0xded849dedb95bb59dee408650cc8f4e18bd458f4?token=0x319558c8aD708dc42f45ab70eADA4750d6c942d7&amount=49.95&label=TabbyPOS
+cpp://bsc/0xded849dedb95bb59dee408650cc8f4e18bd458f4?token=0x319558c8aD708dc42f45ab70eADA4750d6c942d7&amount=49.95&label=TabbyPOS
 ```
 
 ### Native coin payment (ETH)
 ```
-eth:0xded849dedb95bb59dee408650cc8f4e18bd458f4?amount=0.05&label=Coffee+Shop
+cpp://eth/0xded849dedb95bb59dee408650cc8f4e18bd458f4?amount=0.05&label=Coffee+Shop
 ```
 
 ### USDT on Polygon with order reference
 ```
-polygon:0xded849dedb95bb59dee408650cc8f4e18bd458f4?token=0xc2132D05D31c914a87C6611C10748AEb04B58e8F&amount=12.50&desc=Order%23A1042
+cpp://polygon/0xded849dedb95bb59dee408650cc8f4e18bd458f4?token=0xc2132D05D31c914a87C6611C10748AEb04B58e8F&amount=12.50&desc=Order%23A1042
 ```
 
 ### SPL token on Solana
 ```
-sol:7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU?token=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=10.00
+cpp://sol/7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU?token=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=10.00
 ```
 
 ---
 
 ## Wallet Implementation Guide
 
-Wallets that support CryptoPay URI should handle the format via both QR scanning and URI deep links. When a CryptoPay URI is detected:
+Wallets that support CPP URI should handle the format via both QR scanning and URI deep links. For clickable deep links, a wallet may register the custom `cpp` URI scheme with the operating system. When a CPP URI is detected:
 
-1. **Parse the URI** — Extract `chain` from the prefix, `recipient_address` from the path, and all query parameters. Reject malformed URIs with a clear error message.
+1. **Parse the URI** — Verify the `cpp` scheme, extract `chain` from the URI host, extract `recipient_address` from the path, and parse all query parameters. Reject malformed URIs with a clear error message.
 
-2. **Validate the chain** — Check the chain identifier against the supported chain registry. If unknown, show `"Unsupported network: [chain]"` and stop.
+2. **Validate the chain** — Check the host value (the chain identifier) against the supported chain registry. If unknown, show `"Unsupported network: [chain]"` and stop.
 
 3. **Switch network** — If the wallet is on a different network, prompt the user to switch to the required chain before proceeding.
 
@@ -162,27 +172,35 @@ Wallets that support CryptoPay URI should handle the format via both QR scanning
 
 ```javascript
 /**
- * Parse a CryptoPay URI string.
+ * Parse a CPP URI string.
  * Returns null if the URI is invalid or unsupported.
  */
-function parseCryptoPayUri(uri) {
-  // Match:  chain:address?params
-  const match = uri.match(/^([a-z][a-z0-9-]*):([^?]+)\?(.+)$/i);
-  if (!match) return null;
+function parseCPPUri(uri) {
+  let parsed;
 
-  const [, chain, address, queryString] = match;
-  const params = Object.fromEntries(new URLSearchParams(queryString));
+  try {
+    parsed = new URL(uri);
+  } catch {
+    return null;
+  }
 
-  if (!params.amount || isNaN(parseFloat(params.amount))) return null;
+  if (parsed.protocol.toLowerCase() !== "cpp:") return null;
+
+  const chain = parsed.hostname.toLowerCase();
+  const address = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
+  const params = Object.fromEntries(parsed.searchParams.entries());
+
+  if (!chain || !address) return null;
+  if (!params.amount || !/^\d+(\.\d+)?$/.test(params.amount)) return null;
 
   return {
-    chain:    chain.toLowerCase(),
+    chain,
     to:       address,
-    token:    params.token    ?? null,   // null = native coin transfer
-    amount:   parseFloat(params.amount),
-    label:    params.label    ?? null,
-    desc:     params.desc     ?? null,
-    decimals: params.decimals != null ? parseInt(params.decimals) : null,
+    token:    params.token ?? null,   // null = native coin transfer
+    amount:   params.amount,          // preserve exact decimal string
+    label:    params.label ?? null,
+    desc:     params.desc ?? null,
+    decimals: params.decimals != null ? Number.parseInt(params.decimals, 10) : null,
   };
 }
 ```
@@ -190,6 +208,10 @@ function parseCryptoPayUri(uri) {
 ---
 
 ## Security Considerations
+
+### Scheme Validation
+Wallets must verify that the URI scheme is exactly `cpp:` before parsing any payment fields. Similar-looking or nested schemes must not be accepted as CPP payment requests.
+
 
 ### Address Validation
 Wallets must strictly validate the recipient address format for the target chain. For EVM chains, validate the `0x`-prefix and 40-hex-character format. Apply EIP-55 checksum verification where supported. Reject visually similar addresses (homograph attacks).
@@ -202,7 +224,7 @@ Wallets should verify the user has sufficient balance before showing the confirm
 > ⚠️ **Warning:** If the `token` contract address is not in the wallet's verified token list, display a prominent warning: *"Unverified token contract — verify before proceeding."* Show the raw contract address. Do not attempt to display a logo or name from an unverified source.
 
 ### No Automatic Execution
-A CryptoPay URI must **never** trigger an automatic transaction. The URI is a *payment request*, not an authorization. The user must always explicitly confirm before any funds are moved.
+A CPP URI must **never** trigger an automatic transaction. The URI is a *payment request*, not an authorization. The user must always explicitly confirm before any funds are moved.
 
 ### QR Code Tampering
 Users should be educated that physical QR codes can be tampered with (sticker-over-sticker attacks). Wallets should display the full recipient address on the confirmation screen so users can visually verify it.
@@ -211,19 +233,19 @@ Users should be educated that physical QR codes can be tampered with (sticker-ov
 
 ## Prior Art
 
-CryptoPay URI is inspired by existing standards and designed to complement, not replace, them.
+CPP URI is inspired by existing standards and designed to complement, not replace, them.
 
 | Standard | Chain | Amount Format | Multi-chain | Notes |
 |----------|-------|--------------|-------------|-------|
 | **BIP-21** (2012) | Bitcoin only | Decimal (BTC) | ❌ | Simple and elegant, but single-chain |
 | **EIP-681** (2017) | Ethereum only | Wei (uint256) | ❌ | ABI-encoded, hard to generate manually |
-| **CryptoPay URI** (2025) | Any chain | Human-readable decimal | ✅ | Simple URL string, no SDK required |
+| **CPP URI** (2025) | Any chain | Human-readable decimal | ✅ | Unified `cpp://` scheme, no SDK required |
 
 **Key differences from EIP-681:**
 - Amount is human-readable (`49.95`) — not ABI-encoded in the smallest unit (`49950000000000000000`)
-- Chain is identified by a readable prefix (`bsc:`, `eth:`, `sol:`) — not an Ethereum-only `chainId` parameter
+- Every payment request begins with the recognizable `cpp://` scheme, followed by a readable chain identifier (`bsc`, `eth`, `sol`)
 - Works natively for non-EVM chains (Solana, ICP)
-- Easy to generate with a standard URL builder — no ABI encoding library needed
+- Easy to generate and parse with standard URI tools — no ABI encoding library needed
 
 ---
 
@@ -233,8 +255,8 @@ This protocol is most valuable when multiple wallets support it.
 
 | Role | How to participate |
 |------|--------------------|
-| **Wallet developers** | Implement the parser and confirmation UI described in §Implementation Guide. Open a PR to add your wallet to the compatibility list. |
-| **POS / payment builders** | Generate CryptoPay URIs when creating payment QR codes. Use URL encoding for `label` and `desc` values. |
+| **Wallet developers** | Register or recognize the `cpp` URI scheme, then implement the parser and confirmation UI described in §Implementation Guide. Open a PR to add your wallet to the compatibility list. |
+| **POS / payment builders** | Generate `cpp://` CPP URIs when creating payment QR codes. Use URL encoding for `label` and `desc` values. |
 | **Chain teams** | Open a PR to register your chain identifier and address validation rules in the chain registry. |
 | **Reviewers** | Open issues with feedback on the spec, edge cases, or security concerns. All constructive input is welcome. |
 
@@ -265,5 +287,5 @@ MIT — free to implement, fork, and extend.
 
 ---
 
-*CryptoPay URI Protocol · v1.0.0-draft · 2025*  
+*CPP URI Protocol · v1.0.0-draft · 2025*  
 *Proposed by [Lee](https://github.com/lkching7) — Founder, TabbyPOS*
