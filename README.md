@@ -98,15 +98,17 @@ The following chain identifiers are defined in v1.0:
 
 | Identifier | Network | Chain ID | Address Format |
 |------------|---------|----------|----------------|
+| `sol` | Solana Mainnet | — | Base58 (32–44 chars) |
+| `icp` | Internet Computer | — | Account Identifier / Principal |
 | `bsc` | BNB Smart Chain | 56 | EVM (`0x…`, 42 hex chars) |
+| `aptos` | Aptos Mainnet | 1 | Move 32-byte hex (0x + up to 64 hex chars) |
 | `eth` | Ethereum Mainnet | 1 | EVM (`0x…`, 42 hex chars) |
 | `polygon` | Polygon PoS | 137 | EVM (`0x…`, 42 hex chars) |
 | `arb` | Arbitrum One | 42161 | EVM (`0x…`, 42 hex chars) |
 | `op` | Optimism | 10 | EVM (`0x…`, 42 hex chars) |
 | `base` | Base | 8453 | EVM (`0x…`, 42 hex chars) |
 | `avax` | Avalanche C-Chain | 43114 | EVM (`0x…`, 42 hex chars) |
-| `sol` | Solana Mainnet | — | Base58 (32–44 chars) |
-| `icp` | Internet Computer | — | Account Identifier / Principal |
+
 
 > Additional chains may be registered by opening a PR with: chain name, EVM chain ID (if applicable), address format specification, and a reference implementation.
 
@@ -244,7 +246,7 @@ This protocol is most valuable when multiple wallets support it.
 
 | Wallet | Chains | Status |
 |--------|--------|--------|
-| TabbyPOS Wallet | BSC | ✅ Reference implementation |
+| Sophia Wallet | BSC | ✅ Reference implementation |
 
 ---
 
